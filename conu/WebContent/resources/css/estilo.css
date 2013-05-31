@@ -1,0 +1,94 @@
+
+root { display: block; }
+
+/*Estilo de todos los widgets de primefaces*/
+.ui-widget{ font-size: 10px; }
+
+.espacio{ margin: 5px; }
+
+.centrado{
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 200px;
+    width: 25%;
+    height: 25%;
+}
+
+#uploaderImagenes{
+	width: 35%;	
+	float: right; 
+	margin: 15px;
+}
+
+#uploaderDats{
+	width: 35%;	
+	float: right; 
+	margin: 15px;
+}
+
+.ui-button{
+    cursor: default;
+    margin-bottom: 5px;
+    height: 30px;    
+}
+
+body{
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 1em;  
+}
+
+.etiqueta{
+    font-size: 11px;
+    text-decoration: none;
+}
+
+ul{ list-style: none; }
+
+#navegacion{
+	 	
+	background-color: #27ABFF;
+	color: white;
+	width: 100%;
+	height: 20px;
+	font-size: 15px;	
+	-moz-border-radius: 3px;
+    border-radius: 3px; 
+    border: black 1px;      
+	
+}
+
+#navegacion ul {	 
+	 list-style: none;
+	 text-align: left;	 		  
+}
+
+#navegacion ul li { 
+	display: inline;
+	padding: 10px; 
+}
+
+#navegacion ul li a { 
+	  text-decoration: none;
+	  color: white; 
+}
+
+#formaLogout {
+	  text-decoration: none;
+	  color: white;
+}
+
+#combos{
+	margin: 15px;
+	float: left;
+}
+
+#combos ul { list-style: none; }
+
+#combos ul li { margin: 5px; }
+
+.separacion{ margin: 15px; }
+
+#dialogo{ height: 300px; }
+
+.ui-selectonemenu-list-item{ font-size: 10px; }
+

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    	               "http://www.w3.org/TR/html4/loose.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"   
+      xmlns:f="http://java.sun.com/jsf/core"  
+      xmlns:p="http://primefaces.org/ui">
+<h:head>    
+    <h:outputStylesheet library="css" name="estilo.css"/>   
+    <link rel="shortcut icon" type="image/x-icon" href="#{request.contextPath}/resources/imagenes/favicon.ico"/>                 
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Inicio</title>
+</h:head>
+
+   <h:body>
+    
+       <h:form>
+       
+          <p:growl id="growl" sticky="true"/>
+          
+          <table>
+            <tr>
+              <td><span class="etiqueta">Aplicacion: </span></td>
+              <td><p:inputText value="#{cl.aplicacion}"/></td>
+            </tr>
+            <tr>
+              <td><span class="etiqueta">Servidor: </span></td>
+              <td>
+                  <p:selectOneMenu value="#{cl.servidor}">
+                     <f:selectItem itemLabel="Selecciona un servidor" itemValue=""/>                     
+                     <f:selectItems value="#{cl.mapaServidores.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
+                  </p:selectOneMenu>
+              
+              </td>
+            </tr>
+            <tr>
+              <td><span class="etiqueta">Año: </span></td> 
+              <td>
+                  <p:selectOneMenu value="#{cl.año}">
+                     <f:selectItem itemLabel="2013" itemValue="2013"/>
+                  </p:selectOneMenu>
+              
+              </td>
+            </tr>
+            <tr>
+              <td><span class="etiqueta">Mes: </span></td>
+              <td>
+                  <p:selectOneMenu  value="#{cl.mes}">
+                     <f:selectItem  itemLabel="Selecciona un mes" itemValue=""/>
+                     <f:selectItems value="#{cl.mapaMeses.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
+                  </p:selectOneMenu>
+              
+              </td>
+            </tr>
+            <tr>
+              <td><span class="etiqueta">Examen: </span></td>
+              <td>
+                  <p:selectOneMenu  value="#{cl.instrumento}">
+                     <f:selectItem  itemLabel="Selecciona un examen" itemValue=""/>
+                     <f:selectItems value="#{cl.mapaInstrumentos.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
+                     <p:ajax listener="#{cl.llenarSubIns}" update="selectSubtipo"/>
+                  </p:selectOneMenu>              
+              </td>
+              <td>
+                  <p:ajaxStatus style="width:16px;height:16px;" id="ajaxStatusPanel">  
+                       <f:facet name="start">  
+                           <h:graphicImage value="/resources/imagenes/ajax-loader.gif" />  
+                       </f:facet>        
+                       <f:facet name="complete">  
+                          <h:outputText value=""/>  
+                       </f:facet>  
+                  </p:ajaxStatus>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="etiqueta">Subtipo: </span></td>
+              <td>
+                  <p:selectOneMenu  value="#{cl.subInstrumento}" id="selectSubtipo">
+                     <f:selectItem  itemLabel="Selecciona un examen" itemValue=""/>
+                     <f:selectItems value="#{cl.mapaInstrumentosSubtipo.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />                                       
+                  </p:selectOneMenu>              
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><p:commandButton action="#{cl.procesarAplicacion}" update="growl" value="Procesar Aplicacion"/></td>
+            </tr>
+          </table>
+       
+       </h:form>
+     
+   </h:body>
+  
+</html>
