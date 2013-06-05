@@ -15,21 +15,34 @@
 
    <h:body>
     
-       <h:form>
+       <h:form id="forma">
        
-          <p:growl id="growl" sticky="true"/>
+          <p:growl id="growl" sticky="false" life="10000"/>
           
+          <div id="navegacion">
+               <ul>
+                  <li><a href="">Inicio</a></li>
+                  <li><h:commandLink action="#{cl.logout}">Salir</h:commandLink></li>
+               </ul>               
+               <div style="clear: both;height: 10px;"></div>
+          </div>
+         
+         <div id="contenedor">   
+         <table>
+         <tr>   
+           <td>                      
+          <div id="divForma">   
           <table>
             <tr>
               <td><span class="etiqueta">Aplicacion: </span></td>
-              <td><p:inputText value="#{cl.aplicacion}"/></td>
+              <td><p:inputText value="#{ca.aplicacion}"/></td>
             </tr>
             <tr>
               <td><span class="etiqueta">Servidor: </span></td>
               <td>
-                  <p:selectOneMenu value="#{cl.servidor}">
+                  <p:selectOneMenu value="#{ca.servidor}">
                      <f:selectItem itemLabel="Selecciona un servidor" itemValue=""/>                     
-                     <f:selectItems value="#{cl.mapaServidores.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
+                     <f:selectItems value="#{ca.mapaServidores.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
                   </p:selectOneMenu>
               
               </td>
@@ -37,7 +50,7 @@
             <tr>
               <td><span class="etiqueta">Año: </span></td> 
               <td>
-                  <p:selectOneMenu value="#{cl.año}">
+                  <p:selectOneMenu value="#{ca.año}">
                      <f:selectItem itemLabel="2013" itemValue="2013"/>
                   </p:selectOneMenu>
               
@@ -46,9 +59,9 @@
             <tr>
               <td><span class="etiqueta">Mes: </span></td>
               <td>
-                  <p:selectOneMenu  value="#{cl.mes}">
+                  <p:selectOneMenu  value="#{ca.mes}">
                      <f:selectItem  itemLabel="Selecciona un mes" itemValue=""/>
-                     <f:selectItems value="#{cl.mapaMeses.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
+                     <f:selectItems value="#{ca.mapaMeses.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />                     
                   </p:selectOneMenu>
               
               </td>
@@ -56,38 +69,99 @@
             <tr>
               <td><span class="etiqueta">Examen: </span></td>
               <td>
-                  <p:selectOneMenu  value="#{cl.instrumento}">
+                  <p:selectOneMenu  value="#{ca.instrumento}">
                      <f:selectItem  itemLabel="Selecciona un examen" itemValue=""/>
-                     <f:selectItems value="#{cl.mapaInstrumentos.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
-                     <p:ajax listener="#{cl.llenarSubIns}" update="selectSubtipo"/>
+                     <f:selectItems value="#{ca.mapaInstrumentos.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />
+                     <p:ajax listener="#{ca.llenarSubIns}" update="selectSubtipo"/>
                   </p:selectOneMenu>              
               </td>
               <td>
-                  <p:ajaxStatus style="width:16px;height:16px;" id="ajaxStatusPanel">  
-                       <f:facet name="start">  
-                           <h:graphicImage value="/resources/imagenes/ajax-loader.gif" />  
-                       </f:facet>        
-                       <f:facet name="complete">  
-                          <h:outputText value=""/>  
-                       </f:facet>  
-                  </p:ajaxStatus>
+                  
               </td>
             </tr>
             <tr>
               <td><span class="etiqueta">Subtipo: </span></td>
               <td>
-                  <p:selectOneMenu  value="#{cl.subInstrumento}" id="selectSubtipo">
+                  <p:selectOneMenu  value="#{ca.subInstrumento}" id="selectSubtipo">
                      <f:selectItem  itemLabel="Selecciona un examen" itemValue=""/>
-                     <f:selectItems value="#{cl.mapaInstrumentosSubtipo.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />                                       
+                     <f:selectItems value="#{ca.mapaInstrumentosSubtipo.entrySet()}" var="var" itemValue="#{var.key}" itemLabel="#{var.value}" />                                       
                   </p:selectOneMenu>              
               </td>
             </tr>
             <tr>
               <td></td>
-              <td><p:commandButton action="#{cl.procesarAplicacion}" update="growl" value="Procesar Aplicacion"/></td>
+              <td>
+                <p:commandButton actionListener="#{ca.procesarAplicacion}" update="growl tabla" value="Procesar Aplicacion">
+                   <f:setPropertyActionListener target="#{ca.bGuardarDisabled}" value="#{false}"/>
+                </p:commandButton>
+              </td>
             </tr>
           </table>
-       
+         </div>
+         
+         </td>
+         <td>
+         <p:dataTable id="tabla" style="width:65%;" var="var" value="#{ca.valores}" emptyMessage="">
+              <p:column headerText="Aplicacion">
+                 <h:outputText value="#{var.aplicacion}"/>
+              </p:column>
+              <p:column headerText="Imagenes registro">
+                 <h:outputText value="#{var.noRegistrados}"/>
+              </p:column>
+              <p:column headerText="Imagenes respuesta">
+                 <h:outputText value="#{var.noRespuesta}"/>
+              </p:column>
+              <p:column headerText="Registros">
+                 <h:outputText value="#{var.posicionesRegistro}"/>
+              </p:column>
+              <p:column headerText="Registros BPM">
+                 <h:outputText value="#{var.posicionesRegistroBPM}"/>
+              </p:column>
+              <p:column headerText="Registros MControl">
+                 <h:outputText value="#{var.posicionesRegistroMc}"/>
+              </p:column>
+              <p:column headerText="Respuesta">
+                 <h:outputText value="#{var.posicionesRespuesta}"/>
+              </p:column>
+              <p:column headerText="Respuesta BPM">
+                 <h:outputText value="#{var.posicionesRespuestaBPM}"/>
+              </p:column>
+              <p:column headerText="Respuesta MControl">
+                 <h:outputText value="#{var.posicionesRespuestaMc}"/>
+              </p:column>
+              <p:column headerText="Estado">
+                 <h:outputText value="#{var.estado}"/>
+              </p:column>
+           </p:dataTable>
+          </td>
+          <td> 
+           <p:ajaxStatus id="ajaxStatusPanel">  
+              <f:facet name="start">  
+                 <h:graphicImage value="/resources/imagenes/ajax-loader.gif" />  
+              </f:facet>        
+              <f:facet name="complete">  
+                 <h:outputText value=""/>  
+              </f:facet>  
+           </p:ajaxStatus>
+           </td>
+          </tr> 
+          
+          <tr>
+             <td style="text-align: right;vertical-align: top;">
+                 <p:commandButton id="bGuardar" value="Guardar datos" action="#{ca.guardarDatos}" update="growl"/>
+             </td>
+          </tr>
+          
+          <tr>             
+             <td style="text-align: right;vertical-align: top;">
+                 <p:commandButton value="Generar Reporte"/>
+             </td>
+          </tr>         
+          
+         </table>
+           
+         </div>     
+                                 
        </h:form>
      
    </h:body>

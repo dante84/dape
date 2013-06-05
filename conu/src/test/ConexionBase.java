@@ -1,13 +1,12 @@
 package test;
 
 
-import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
 // @author daniel
 
-public class ConexionBase implements Serializable {
+public class ConexionBase {
          
 	    private static final long serialVersionUID = 1L;
 		private Connection c;        
