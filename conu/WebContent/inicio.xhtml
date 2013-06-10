@@ -4,7 +4,8 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:h="http://java.sun.com/jsf/html"      
-      xmlns:p="http://primefaces.org/ui">
+      xmlns:p="http://primefaces.org/ui"
+      xmlns:f="http://java.sun.com/jsf/core"  >
 <h:head>    
     <h:outputStylesheet library="css" name="estilo.css"/>   
     <link rel="shortcut icon" type="image/x-icon" href="#{request.contextPath}/resources/imagenes/favicon.ico"/>                 
@@ -21,7 +22,13 @@
              <table>
               <tr>                                                    
                 <td><span class="etiqueta">Nombre:</span></td>
-                <td><p:inputText styleClass="espacio" maxlength="40" value="#{cl.nombre}"/></td>
+                <td>
+                    <p:inputText styleClass="espacio" maxlength="40" value="#{cl.nombre}">
+                       <f:metadata>
+                          <f:viewParam name="nombre" value="#{cl.nombre}" />
+                       </f:metadata>
+                    </p:inputText>
+                </td>
               </tr>      
                <tr>              
                 <td><span class="etiqueta">Contraseña:</span></td>

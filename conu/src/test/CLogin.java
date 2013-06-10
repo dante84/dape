@@ -1,5 +1,6 @@
 package test;
 
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -7,7 +8,7 @@ import java.sql.Statement;
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
 
-public class CLogin {
+public class CLogin implements Serializable{
 	 	
 	   private static final long serialVersionUID = 1L;	   	  
 	   

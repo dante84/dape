@@ -7,21 +7,20 @@ import java.sql.DriverManager;
 // @author daniel
 
 public class ConexionBase {
-         
-	    private static final long serialVersionUID = 1L;
-		private Connection c;        
+         	   
+	   private Connection c;        
    
-        public Connection getC(String host,String base,String usuario,String pass) {
+       public Connection getC(String host,String base,String usuario,String pass) {
             
-               try{
+              try{
                    
-                   Class.forName("com.mysql.jdbc.Driver");                                     
-                   c = DriverManager.getConnection("jdbc:mysql://" + host + ":3306/" + base,usuario,pass);                                     
+                  Class.forName("com.mysql.jdbc.Driver");                                     
+                  c = DriverManager.getConnection("jdbc:mysql://" + host + ":3306/" + base,usuario,pass);                                     
                    
-               }catch(Exception e){ e.printStackTrace(); }                                          
+              }catch(Exception e){ e.printStackTrace(); }                                          
                
-               return c;
+              return c;
                
-        }
+       }
                            
 }

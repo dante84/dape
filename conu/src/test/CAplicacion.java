@@ -1,10 +1,14 @@
 package test;
 
+import java.awt.Color;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -21,8 +25,11 @@ import java.util.Locale;
 import java.util.Map;
 
 import javax.faces.application.FacesMessage;
+import javax.faces.bean.ManagedProperty;
 import javax.faces.context.FacesContext;
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -30,14 +37,29 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.primefaces.component.datatable.DataTable;
+import org.springframework.web.context.ContextLoader;
 
-public class CAplicacion {
-	              
-       private boolean existente = true,registro = false,respuesta = false,datsErraticos = false,mControlNoDat = false;
-       private boolean bGuardarDisabled;
-       private String institucion;
+import com.lowagie.text.Chunk;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.HeaderFooter;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.pdf.draw.VerticalPositionMark;
+
+public class CAplicacion implements Serializable{
+	                   
+	   private static final long serialVersionUID = 1L;
+	   private boolean registro = false,respuesta = false,datsErraticos = false,mControlNoDat = false;
+       private boolean bGuardarDisabled,tieneCero;       
        
-       private int imagenesExistenR = 0,imagenesExistenS = 0,valorMControlR = 0,valorMControlS = 0,numeroPosiciones = 0,posicionesExcel = 0;
+       private int imagenesExistenR = 0,imagenesExistenS = 0,valorMControlR = 0,valorMControlS = 0,numeroPosiciones = 1,posicionesExcel = 0;
        private int posicionesRegistro = 0,posicionesRespuesta = 0,posicionesRegistroBPM = 0,posicionesRespuestaBPM = 0;
        private int posicionesRegistroMc = 0,posicionesRespuestaMc = 0;
 	          
@@ -48,16 +70,18 @@ public class CAplicacion {
 	   private String servidor;
 	   private String subInstrumento;
 	         
-       private String scTipoAplicacion,scSTipoAplicacion,scInstitucion,fecha,rutaApp,estado;
+       private String scTipoAplicacion,scSTipoAplicacion,scInstitucion,fecha,rutaApp,estado,fechaAlterna;
        private int scClave_instr;
        private double noRegistrados,noRespuesta;
        private Date fechaExcel;
-	   
+       private Aplicacion app;
+       
        private List<Aplicacion> valores;
 	   private Map<String,String> mapaServidores;
 	   private Map<String,String> mapaMeses;
 	   private Map<String,String> mapaInstrumentos;
 	   private Map<String,String> mapaInstrumentosSubtipo;
+	   private List<String> valoresLista;
 	   
 	   private SimpleDateFormat sdf;
 	   
@@ -65,9 +89,10 @@ public class CAplicacion {
 	   
 	   private Workbook wb;
 	   
-	   private Map<Object,Object> mapaAplicacionesSinDatif = new HashMap<>(),aplicacionesInexistentes = new HashMap<>(),
-                                  mapaAplicacionesPosicionesDesfazadas = new HashMap<>();
+	   private Map<Object,Object> aplicacionesInexistentes = new HashMap<>(),mapaAplicacionesPosicionesDesfazadas = new HashMap<>();
 
+	   @ManagedProperty(value="#{cl}")
+	   private CLogin loginBean; 
 	   
 	   private ConexionBase conexionBase;
 	   
@@ -144,7 +169,7 @@ public class CAplicacion {
        }
 	   
 	   public void procesarAplicacion(){
-		      
+		   		      
 		      if( aplicacion.equals("") || año.equals("") || servidor.equals("") || mes.equals("") || instrumento.equals("")  || 
 		    	  subInstrumento.equals("")){
 		    	  
@@ -155,7 +180,8 @@ public class CAplicacion {
 		    	    String subChange = subInstrumento.replace('_','-');
 		    	    String ruta = "";
 		    	    
-		    	    if( instrumento.equals("EGEL")){ ruta = servidor + año + "\\" + instrumento + "\\"; }
+		    	    boolean esEgel = false;
+		    	    if( esEgel = instrumento.equals("EGEL") ){ ruta = servidor + año + "\\" + instrumento + "\\"; }
 		    	    else{ ruta = servidor + año + "\\" + instrumento + "\\" + subChange + "\\" ; }
 		    	    
 		    	    File archivoRutaAplicacion = new File(ruta); 
@@ -164,22 +190,44 @@ public class CAplicacion {
 		    	    System.out.println("ruta " + ruta + " existe " + existe);
 		    	    
 		    	    if( existe ){
-		    	    	rutaApp = ruta;
+		    	    	 
+		    	    	rutaApp = "";
+		    	    	
+		    	    	for( int i = 0; i <= ruta.length() - 1; i++ ){
+		    	    		 char car = ruta.charAt(i);
+		    	    		 if( car == '\\'){ rutaApp += "\\\\"; }
+		    	    		 else{ rutaApp += car; }
+		    	    	}
+		    	    	
+		    	    	System.out.println("rutaApp " + rutaApp);
+		    	    	
  		    	        obtenDatos();
+ 		    	        cuentaPosiciones(ruta,esEgel);
+ 		    	        
  		    	        if( cuentaImagenes(ruta,instrumento,subInstrumento) ){
- 		    	    	
- 		    	    	    cuentaPosiciones(ruta); 		    	    	
+ 		    	    	 		    	    	    		    	    	
  		    	    	    String state = "";
  		    	    	    if( datsErraticos || mControlNoDat ){ state = "Verificar";	}
  		    	    	    else{ state = "Correcto"; }
  		    	    	
  		    	    	    estado = state;
+ 		    	    	    
+ 		    	    	    if( (instrumento.equals("EXANI") || instrumento.equals("EGEL")) ){
+ 	                        	 posicionesRegistro -= 1;
+ 	                        	 posicionesRespuesta -= 1;
+ 	                        	 
+ 	                        	 if( posicionesRegistro < 0 ){ posicionesRegistro = 0;}
+ 	                        	 if( posicionesRespuesta < 0 ){ posicionesRespuesta = 0;}
+ 	                        }
+ 		    	    	    
  		    	    	    System.out.println(aplicacion + " " + imagenesExistenR + " " + imagenesExistenS + " " + posicionesRegistro + " " + 
   	    	                                   posicionesRegistroBPM + " " + posicionesRegistroMc + " " + + posicionesRespuesta + " " + 
  		    	    			               posicionesRespuestaBPM + " " +  posicionesRespuestaMc + " " + state);
   	    	
  		    	    	
- 		    	    	    Aplicacion app = new Aplicacion(aplicacion,
+ 		    	    	    
+ 		    	    	    
+ 		    	    	    app = new Aplicacion(aplicacion,
  		    	    		  	                            String.valueOf(imagenesExistenR),
  		    	    			                            String.valueOf(imagenesExistenS),
  		    	    			                            String.valueOf(posicionesRegistro),
@@ -189,6 +237,15 @@ public class CAplicacion {
  		    	    			                            String.valueOf(posicionesRespuestaBPM),
  		    	    			                            String.valueOf(posicionesRespuestaMc),
  		    	    			                            state);
+ 		    	    	    
+ 		    	    	    valoresLista = new ArrayList<String>(); 		    	    	   		    	    	   
+ 		    	    	    valoresLista.add(String.valueOf(imagenesExistenR));
+ 		    	    	    valoresLista.add(String.valueOf(imagenesExistenS));
+ 		    	    	    valoresLista.add(String.valueOf(posicionesRegistro)); 		    	    	    
+ 		    	    	    valoresLista.add(String.valueOf(posicionesRegistroMc));
+ 		    	    	    valoresLista.add(String.valueOf(posicionesRespuesta)); 		    	    	    
+ 		    	    	    valoresLista.add(String.valueOf(posicionesRespuestaMc));
+ 		    	    	    valoresLista.add(state);
  		    	    	
  		    	    	    getValores().add(app); 	 		    	    	      	    	  
  		    	    	
@@ -231,7 +288,7 @@ public class CAplicacion {
 
                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd",Locale.ENGLISH);                    
                                                                                                             
-                   Statement statement = con.createStatement();//conectaBase();                        
+                   Statement statement = con.createStatement();                        
                    String select = "select cve_instr from datos_examenes";                                      
             
                    select += " where nom_corto = '" + subInstrumento + "'" ;
@@ -247,7 +304,7 @@ public class CAplicacion {
                  
                            for( Iterator<Row> it = rowIt; it.hasNext(); ){
 
-                                Row r = (Row) it.next();
+                                Row r = (Row)it.next();
   
                                 Cell cFechaInicio        = r.getCell(1); 
                                 Cell cTipoAplicacion     = r.getCell(11);
@@ -259,7 +316,7 @@ public class CAplicacion {
 
                                 String scTipoAplicacion  = cTipoAplicacion.getStringCellValue().trim();                                                  
                                 String scSTipoAplicacion = cSTipoAplcacion.getStringCellValue().trim();
-                                scInstitucion     = cInstitucion.getStringCellValue().trim();
+                                scInstitucion            = cInstitucion.getStringCellValue().trim();
                                 int scClave_instr        = Integer.parseInt( cClave_instr.getStringCellValue());
                                 double noRegistrados     = noRegistradosCell.getNumericCellValue();
                                 double noRespuesta       = noRespuestaCell.getNumericCellValue();                                                                                  
@@ -299,7 +356,8 @@ public class CAplicacion {
                  
                                         System.out.println( h + " " + oapp + " " + scClave_instr + " " + valor + " " + 
                                                             fecha + " " + fechaExcel + " " + scInstitucion);         
-                                                                                                                           
+                                                          
+                                        fechaAlterna = fecha;
                                         registro = true;                                        
                                         respuesta = true;                                                                                                                                                                                                                              
                      
@@ -333,14 +391,55 @@ public class CAplicacion {
                               for( File f : archivos ){                                                                                                      
                                    String nombreArchivo = f.getName();  
                                 
-                                   if( nombreArchivo.matches("\\d{6}\\_[Rr]\\d{3}\\.[t][i][f]") ){ imagenesExistenR++; }                                                                                                                                                                                                                                                                                                                    
-                                   if( nombreArchivo.matches("\\d{6}\\_[Ss]\\d{3}\\.[t][i][f]") ){ imagenesExistenS++; }                                                              
-                                   
+                                   if( instrumento.equals("EGEL") ){
+                                	   if( nombreArchivo.matches("\\d{6}\\_[Rr][Xx]\\d{2}\\.[t][i][f]") ){ imagenesExistenR++; }                                                                                                                                                                                                                                                                                                                    
+                                       if( nombreArchivo.matches("\\d{6}\\_[Ss][Xx]\\d{2}\\.[t][i][f]") ){ imagenesExistenS++; }
+                                   }else{
+                                         if( nombreArchivo.matches("\\d{6}\\_[Rr]\\d{3}\\.[t][i][f]") ){ imagenesExistenR++; }                                                                                                                                                                                                                                                                                                                    
+                                         if( nombreArchivo.matches("\\d{6}\\_[Ss]\\d{3}\\.[t][i][f]") ){ imagenesExistenS++; }
+                                   }
+                                                                     
                               }
                                                                                                                                                   
                           }                                           
                                                            
-                     }                                                                                                                                                
+                     }
+                    
+                     conexionBase = new ConexionBase();
+                     Connection con = conexionBase.getC("172.16.50.14","replicasiipo","PO","C0Xuqv5Fu3");                     
+                     Statement sta = con.createStatement();
+                     String select = "select canImaReg,canImaRes from datos_examenes where nom_corto = '" + subInstrumento + "'";
+                     System.out.println(select);
+                     
+                     ResultSet rs = sta.executeQuery(select);
+                     
+                     int regDebenExistir = 0;
+                     int resDebenExistir = 0;
+                     
+                     if( rs.first() ){
+                    	                            
+                    	 int pregRs = Integer.valueOf(rs.getString(1));
+                    	 int presRs = Integer.valueOf(rs.getString(2));
+                    	                     	 
+                         if( (instrumento.equals("EXANI") || instrumento.equals("EGEL")) ){
+                        	 regDebenExistir = (posicionesRegistro  - 1) * pregRs;
+                        	 resDebenExistir = (posicionesRespuesta - 1) * presRs;
+                         }else{
+                        	   regDebenExistir = posicionesRegistro  * pregRs;
+                        	   resDebenExistir = posicionesRespuesta * presRs;                                                           
+                         }
+                         
+                         System.out.println("preg " + posicionesRegistro + " pres " + posicionesRespuesta + " posicionesRegistro " + posicionesRegistro + 
+                        		            " posicionesRespuesta " + posicionesRespuesta);                                                  
+                         System.out.println("ImagReg del query " + rs.getString(1) + " existen " + imagenesExistenR + " debenExistir " + regDebenExistir);
+                         System.out.println("ImagRes del query " + rs.getString(2) + " existen " + imagenesExistenS + " debenExistir " + resDebenExistir);
+                                                  
+                         if( (regDebenExistir != imagenesExistenR) || (resDebenExistir != imagenesExistenS) ){
+                        	  FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("Las imagenes no empatan.Verifica por favor",""));
+                        	  return false;
+                         }
+                         
+                     }
                
                }catch(Exception e){ e.printStackTrace(); }    
                
@@ -348,7 +447,7 @@ public class CAplicacion {
    
        }
 	   
-	   private void cuentaPosiciones(String rutaDatif){
+	   private void cuentaPosiciones(String rutaDatif,boolean esEgel){
                                                                                                                                                                                                                                                             
                rutaDatif += "\\" + aplicacion + "\\DATIF";
                File datif = new File(rutaDatif);                                                                                          
@@ -358,7 +457,7 @@ public class CAplicacion {
                if( existeDatif ){
                    datif.getAbsolutePath();                     
                    File[] archivos = datif.listFiles(                            		   
-	 	                 new FileFilter() {
+	 	                  new FileFilter() {
 		                     @Override
                              public boolean accept(File pathname) {                                     
                                     if( pathname.getName().endsWith(".dat") ){ return true; }                                          
@@ -374,8 +473,8 @@ public class CAplicacion {
                    int la = (archivos.length - 1);                          
                                                                                          
                    if( la == -1 && 
-                          ( ( registro && Double.valueOf( noRegistrados  ) > 0  ) || 
-                          ( ( respuesta && Double.valueOf( noRespuesta ) > 0) ) ) ) {      
+                       ( ( registro  && Double.valueOf( noRegistrados  ) > 0 ) || 
+                       ( ( respuesta && Double.valueOf( noRespuesta    ) > 0 ) ) ) ) {      
                           System.out.println("No hay dats " + aplicacion);                          
                    }
                    
@@ -388,81 +487,79 @@ public class CAplicacion {
                              subNombreArchivo += nombreArchivo.charAt(i);
                         }                                                                                                        
                                    
-                           char ci = nombreArchivo.charAt(0);
+                        char ci = nombreArchivo.charAt(0);
                                                        
-                           if( subNombreArchivo.matches("[Rr]\\d{9}[Xx][_\\d]") || subNombreArchivo.matches("[Ss]\\d{9}[Xx][_\\d]") ){ 
+                        if( subNombreArchivo.matches("[Rr]\\d{9}[Xx][_\\d]") || subNombreArchivo.matches("[Ss]\\d{9}[Xx][_\\d]") ){ 
         
-                               String c = "";
-                               c += ci;
+                            String c = "";
+                            c += ci;
            
-                               if( c.matches("[RrSs]") ){                                                       
-                                   if( "r".equals(c) || "R".equals(c) ){                                                                 
-                                       r++;                                 
-                                   }   
-                                   if( "s".equals(c) || "S".equals(c) ){                                                               
-                                       S++;
-                                   }
-                               }                                                                                          
+                            if( c.matches("[RrSs]") ){                                                       
+                                if( "r".equals(c) || "R".equals(c) ){                                                                 
+                                     r++;                                 
+                                }   
+                                if( "s".equals(c) || "S".equals(c) ){                                                               
+                                     S++;
+                                }
+                            }                                                                                          
         
-                           }else{                                     
-                                 datsErraticos = true;
-                                 continue;
-                           }   
+                        }else{                                     
+                              datsErraticos = true;
+                              continue;
+                        }   
                                                                                                           
-                      }
+                   }
                                       
-                      System.out.println("Es " + respuesta +" S " + S + " " + noRespuesta );
-                      if( respuesta && S == -1 && noRespuesta > 0 ){
-                          System.out.println("No hay dats de respuestas en " + aplicacion);
-                          mControlNoDat = true;
-                      }
+                   System.out.println("Es " + respuesta +" S " + S + " " + noRespuesta );
+                   if( respuesta && S == -1 && noRespuesta > 0 ){
+                       System.out.println("No hay dats de respuestas en " + aplicacion);
+                       mControlNoDat = true;
+                   }
                                                                        
-                      System.out.println("Es " + registro +" r " + r + ( Double.valueOf( noRegistrados ) >= 0 ) );
-                      if( registro && r == -1 && Double.valueOf(noRegistrados) > 0){
-                          System.out.println("No hay dats de registros en " + aplicacion);
-                          mControlNoDat = true;
-                      }
+                   System.out.println("Es " + registro +" r " + r + ( Double.valueOf( noRegistrados ) >= 0 ) );
+                   if( registro && r == -1 && Double.valueOf(noRegistrados) > 0){
+                       System.out.println("No hay dats de registros en " + aplicacion);
+                       mControlNoDat = true;
+                   }
                       
-                      if( la == -1 ){
-                    	  FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("La aplicacion " + aplicacion + " no tienen folder DATIF." +
+                   if( la == -1 ){
+                    	  FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("La aplicacion " + aplicacion + " archivos dat." +
                                                                                              "Verifica por favor",""));
-                    	  //mapaAplicacionesSinDatif.put(o,o); 
-                      }else{    
+                   }else{    
                      	 
-                           int i = 0;
+                         int i = 0;
                            
-                           while( i <=  r ){                               
-                                  String nombreArchivo = archivos[i].getName();                                                                                                       
-                                  valorMControlR = leeArchivo(nombreArchivo,rutaDatif,aplicacion,i,r,"R");
-                                  i++;
-                           }                                                            
+                         while( i <=  r ){                               
+                                String nombreArchivo = archivos[i].getName();                                                                                                       
+                                valorMControlR = leeArchivo(nombreArchivo,rutaDatif,aplicacion,i,r,"R");
+                                i++;
+                         }                                                            
    
-                           while( i <= la ){                               
-                                  String nombreArchivo = archivos[i].getName();                                                                                                                                                                                    
-                                  valorMControlS = leeArchivo(nombreArchivo,rutaDatif,aplicacion,i,la,"S");
-                                  i++;
-                           }
+                         while( i <= la ){                               
+                                String nombreArchivo = archivos[i].getName();                                                                                                                                                                                    
+                                valorMControlS = leeArchivo(nombreArchivo,rutaDatif,aplicacion,i,la,"S");
+                                i++;
+                         }
    
-                      }
+                   }
                    
-                }else{
-                 	  FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("La aplicacion " + aplicacion + " no tienen folder DATIF." +
-                                                                                         "Verifica por favor",""));
-                	  //mapaAplicacionesSinDatif.put(o, o); 
-                }                                                                                     
+               }else{
+                 	 FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("La aplicacion " + aplicacion + " no tienen folder DATIF." +
+                                                                                        "Verifica por favor",""));	  
+               }                                                                                     
                                                                                                                                                                                                 
        }
-   
+          
        @SuppressWarnings("resource")
-       public int leeArchivo(String nombreArchivo,String rutaDatif,Object f,int i,int noArchivos,String tipo){               
+	   public int leeArchivo(String nombreArchivo,String rutaDatif,Object f,int i,int noArchivos,String tipo){               
 
               String linea = "";                                                 
               int temp;                                                                                                                                                                                                         
 
               try{         
                            
-                  File f1 = new File(rutaDatif + "\\" + nombreArchivo);                  
-                  FileInputStream fis = new FileInputStream(f1);                       
+                  File f1 = new File(rutaDatif + "\\" + nombreArchivo);                                    
+				  FileInputStream fis = new FileInputStream(f1);                       
 
                   while(true){
 
@@ -480,7 +577,15 @@ public class CAplicacion {
                             String sub = linea.substring(3,9);                            
                             digitoSub  = Integer.parseInt(sub);                               
 
-                            if( digitoSub == 0 ){ numeroPosiciones--; }
+                            if( digitoSub == 0 ){
+//                            	original                            	
+//                            	numeroPosiciones -= 2;
+//                            	tieneCero = true;
+//                            	
+//                            	Nuevo continue
+                            	linea = "";
+                            	continue;
+                            }
 
                             numeroPosiciones++;                                                                                
                               
@@ -510,7 +615,7 @@ public class CAplicacion {
                             posicionesRespuestaMc = posicionesExcel;
                       }  
 
-                      numeroPosiciones = 0;
+                      numeroPosiciones = 1;
                          
                   }                                   
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
@@ -596,8 +701,7 @@ public class CAplicacion {
        }
        
        public void guardarDatos(){
-    	    
-    	      FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("En guardarDatos " + aplicacion,""));
+    	        	      
     	      sdf = new SimpleDateFormat("yyyy-MM-dd",Locale.ENGLISH);
     	      String fActual = sdf.format(new Date());
     	      
@@ -611,7 +715,7 @@ public class CAplicacion {
                                                                                                                                         
                   select += aplicacion + "'";
                   System.out.println(select);                      
-                  ResultSet  rs = sta.executeQuery(select);                                                     
+                  ResultSet rs = sta.executeQuery(select);                                                     
                        
                   if( !rs.isBeforeFirst() ){
                            
@@ -642,15 +746,17 @@ public class CAplicacion {
                             	  "', pregistro = '" + posicionesRegistro + "', pregistrobpm = '" + posicionesRegistroBPM + 
                                   "',pregistromcontrol = '" + posicionesRegistroMc + "',prespuesta = '" + posicionesRespuesta +
                             	  "',prespuestabpm = '" + posicionesRespuestaBPM + "',prespuestamcontrol = '" + posicionesRespuestaMc +
-                            	  "',ruta = '" + rutaApp + "',institucion = '" + scInstitucion + "', estado = '" + estado + "'";                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                            	  "',ruta = '" + rutaApp + "', institucion = '" + scInstitucion + "', estado = '" + estado + "'";                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
                                
                         System.out.println(update);
                         int resultado = sta.executeUpdate(update);                                                                                                 
                         
                         if( resultado > 0 ){
-                      	     FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("Datos actualizados correctamente",""));
-                        }else{ FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("Hubo un error al actualizar los datos.Contacta al" +
-                      	                                                                        " Administrador del sistema","")); }
+                      	    FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("Datos actualizados correctamente",""));
+                        }else{ 
+                        	  FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("Hubo un error al actualizar los datos.Contacta al" +
+                      	                                                                         " Administrador del sistema",""));
+                        }
                                                                                                                                                                                                                                                                                                                                       
                   }                                                                                                          
                                                                                               
@@ -659,6 +765,214 @@ public class CAplicacion {
     	      }catch(Exception e){ e.printStackTrace(); }
     	   
        }
+       
+       public void generarReporte(){
+    	   
+    	      HttpSession session = (HttpSession)FacesContext.getCurrentInstance().getExternalContext().getSession(true);		      		      		      
+		      CLogin cl = (CLogin)session.getAttribute("cl");
+		      		      		        	    
+    	      FacesContext.getCurrentInstance().addMessage(null,new FacesMessage("En generarReporte " + aplicacion,""));
+    	      FacesContext context = FacesContext.getCurrentInstance(); 
+    	       
+    	      HttpServletResponse response = (HttpServletResponse)context.getExternalContext().getResponse();  
+    	      response.setContentType("application/pdf");  
+    	      response.setHeader("Content-disposition","filename=Reporte.pdf");
+    	      
+              try{
+            	  
+            	  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            	  
+    	    	  SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
+    	    	  SimpleDateFormat sdfh = new SimpleDateFormat("HH:mm:ss");
+    	    	  
+    	  		  String fCadena = sdff.format(new Date());
+    	  		  String hCadena = sdfh.format(new Date());
+    	  		  
+    	    	  Document pdf = new Document();
+  		          pdf.setPageSize(PageSize.A4);
+  		          
+  		          PdfWriter.getInstance(pdf,baos);
+  		             	
+  		          Chunk espacio1 = new Chunk(new VerticalPositionMark(),120,false);  		            		          
+  		          Chunk espacio2 = new Chunk(new VerticalPositionMark(),200,true);  		          	
+  		            		            		          
+  		          Phrase fraseEncabezado = new Phrase();
+  		          
+  		          FontFactory.register("C:\\\\Windows\\\\Fonts\\\\AGENCYB.TTF","agencyb");
+  		          FontFactory.register("C:\\\\Windows\\\\Fonts\\\\AGENCYR.TTF","agencyr");  
+  		          Font agencyFb = FontFactory.getFont("agencyb");
+  		          agencyFb.setSize(16f);
+  		          
+  		          fraseEncabezado.add(new Chunk(espacio1));  		          
+  		          fraseEncabezado.add(new Chunk("DIRECCION DE PROCESOS ÓPTICOS Y CALIFICACIÓN",agencyFb));
+  		            		          
+		          Font agencySubh = FontFactory.getFont("agencyb");
+		          agencySubh.setSize(12f);
+		          
+  		          fraseEncabezado.add(new Chunk(espacio2));  		         
+  		          fraseEncabezado.add(new Chunk("   - PROCESOS ÓPTICOS -",agencySubh));
+  		            		         
+  		          HeaderFooter encabezado = new HeaderFooter(fraseEncabezado,false);  		            		                              		           		          
+  		           
+  		          pdf.setHeader(encabezado);
+  		            		           
+  		          pdf.open();  		          
+  		            		            		            		          
+  		          Font agencyDatos= FontFactory.getFont("agencyb");
+		          agencySubh.setSize(10f);		            
+		          
+		          Paragraph parrafoInformacion = new Paragraph();
+		          Phrase fraseInformacion = new Phrase();
+		          
+		          fraseInformacion.setFont(agencyDatos);		          		          
+		          fraseInformacion.add("                                                                    Validación de imagenes de lectura óptica");
+		          
+		          parrafoInformacion.add(fraseInformacion);
+		          
+		          pdf.add(parrafoInformacion);
+		          pdf.add(Chunk.NEWLINE);		          
+		          
+		          Paragraph parrafoTablaEncabezado = new Paragraph();
+		          PdfPTable tablaEncabezado = new PdfPTable(3);
+		          tablaEncabezado.setWidthPercentage(100);
+		          
+		          Phrase fraseAplicacion = new Phrase("Número de aplicación: " + aplicacion,agencyDatos);    	                	          
+ 	              PdfPCell celdaApp = new PdfPCell(fraseAplicacion);
+   	              tablaEncabezado.addCell(celdaApp);
+   	              
+   	              System.out.println("La fecha en reporte " + fechaAlterna);
+    	          Phrase fraseFecha = new Phrase("Fecha de aplicación: " + fechaAlterna,agencyDatos);    	                	          
+	              PdfPCell celdaFecha = new PdfPCell(fraseFecha);
+	              tablaEncabezado.addCell(celdaFecha);
+	              
+	              Phrase fraseExamen = new Phrase("Tipo de examen: " + subInstrumento,agencyDatos);    	                	          
+	              PdfPCell celdaExamen = new PdfPCell(fraseExamen);
+	              tablaEncabezado.addCell(celdaExamen);
+	              
+   	              parrafoTablaEncabezado.add(tablaEncabezado);
+   	        
+   	              pdf.add(parrafoTablaEncabezado);
+   	              pdf.add(Chunk.NEWLINE);
+		          		          
+		          Paragraph parrafoTabla = new Paragraph();
+		          PdfPTable tablaPdf = new PdfPTable(2);
+		          
+		          tablaPdf.setWidthPercentage(100);
+		          //tablaPdf.setTotalWidth((PageSize.A4.getWidth() - pdf.leftMargin() - pdf.rightMargin()) * tablaPdf.getWidthPercentage() / 100);
+		          
+		          String[] encabezados = {"Nombre dato","Numero"};
+    
+                  Font fuenteEncabezados = FontFactory.getFont("agencyb");               
+                  fuenteEncabezados.setSize(10f);
+                  
+                  for( int i = 0; i <= (encabezados.length - 1); i++ ){
+                       Phrase fraseEncabezados = new Phrase();
+                       fraseEncabezados.setFont(fuenteEncabezados);
+          	           fraseEncabezados.add(encabezados[i]);
+          	           PdfPCell celda = new PdfPCell(fraseEncabezados);
+                       celda.setFixedHeight(20);  	    	      	            	    	
+          	           tablaPdf.addCell(celda);                	   
+                  }
+		                 
+                  String[] datosNombres = {"Imagenes registro","Imagenes respuesta","Cantidades registro",
+                		                   "Cantidades registro MControl","Cantidades respuesta","Cantidades respuesta MControl","Estado"};
+                  
+                  Font agencyr = FontFactory.getFont("agencyr");
+                  agencyr.setSize(12f);
+                  
+                  int i = 0;
+                  for( String valor : valoresLista ){
+                	  
+                	   Phrase frase = new Phrase(datosNombres[i],agencyr);    	                	          
+      	               PdfPCell celda = new PdfPCell(frase);
+        	           tablaPdf.addCell(celda);
+        	           
+        	           frase = new Phrase(valor,agencyr);    	                	          
+      	               celda = new PdfPCell(frase);
+        	           tablaPdf.addCell(celda);
+        	           
+        	           i++;
+        	                           	   
+                  }
+                                  	               	                            
+      	          pdf.add(Chunk.NEWLINE);
+      	          parrafoTabla.add(tablaPdf);
+                  pdf.add(parrafoTabla);
+                             
+                  for( i = 0; i <= 23; i++ ){
+                       pdf.add(Chunk.NEWLINE);
+                  }                 
+                                    
+                  Paragraph parrafoTablaFoot = new Paragraph();
+		          PdfPTable tablaFoot = new PdfPTable(2);
+		          tablaFoot.setWidthPercentage(100);
+		          
+		          conexionBase = new ConexionBase();
+		          Connection con = conexionBase.getC("172.16.50.14","replicasiipo","PO","C0Xuqv5Fu3");
+		          String select = "select nombre_completo from usuarios where nombre = '" + cl.getNombre().trim() + "'";
+		          System.out.println(select);
+		          String name = "";
+		          
+		          try {
+					   Statement sta = con.createStatement();
+					   ResultSet rs = sta.executeQuery(select);
+					   if( rs.first() ){
+					       name = rs.getString(1);
+					   }
+				  }catch (SQLException e){ e.printStackTrace();	}
+		          
+		          Phrase fraseFoot = new Phrase("Nombre del usuario: " + name,agencyr);    	                	          
+ 	              PdfPCell celdaFoot = new PdfPCell(fraseFoot);
+ 	              celdaFoot.setFixedHeight(25f);
+   	              tablaFoot.addCell(celdaFoot);
+   	          		   	              	              
+	              fraseFoot = new Phrase("Vo.Bo",agencyr);    	                	          
+	              celdaFoot = new PdfPCell(fraseFoot);
+	              celdaFoot.setFixedHeight(25f);
+	              celdaFoot.setBorderColorBottom(new Color(255));
+	              tablaFoot.addCell(celdaFoot);
+	              
+	              fraseFoot = new Phrase("Fecha del diagnóstico: " + fCadena,agencyr);    	                	          
+	              celdaFoot = new PdfPCell(fraseFoot);
+	              celdaFoot.setFixedHeight(25f);
+	              tablaFoot.addCell(celdaFoot);
+	              
+	              fraseFoot = new Phrase("Nombre:",agencyr);    	                	          
+	              celdaFoot = new PdfPCell(fraseFoot);
+	              celdaFoot.setBorderColorTop(new Color(255));
+	              celdaFoot.setFixedHeight(25f);
+	              tablaFoot.addCell(celdaFoot);
+	              
+	              fraseFoot = new Phrase("Hora del diagnóstico: " + hCadena,agencyr);    	                	          
+	              celdaFoot = new PdfPCell(fraseFoot);
+	              celdaFoot.setFixedHeight(25f);
+	              tablaFoot.addCell(celdaFoot);
+	              
+	              fraseFoot = new Phrase("Firma:",agencyr);    	                	          
+	              celdaFoot = new PdfPCell(fraseFoot);
+	              celdaFoot.setFixedHeight(25f);
+	              tablaFoot.addCell(celdaFoot);
+		          
+                  parrafoTablaFoot.add(tablaFoot);
+                  pdf.add(parrafoTablaFoot);                                    
+                  
+  		          pdf.close();  
+  		            		          
+  		          OutputStream os = response.getOutputStream();
+  		          baos.writeTo(os);
+  		          os.flush();
+  		          os.close();
+       		            		         
+    	      }catch(DocumentException | IOException e){ e.printStackTrace(); }
+    	    
+              context.responseComplete();
+               
+       }
+              
+	   public Object getBean(String nombre){
+   		      Object bean = ContextLoader.getCurrentWebApplicationContext().getBean(nombre);
+   		      return bean;
+   	   }
 	   	   	  	  
 	   public String getAplicacion() {
 		      return aplicacion;
@@ -751,6 +1065,14 @@ public class CAplicacion {
 	   public List<Aplicacion> getValores() {
 			  return valores;
 	   }		
+	   	   
+	   public boolean isbGuardarDisabled() {
+		      return bGuardarDisabled;
+	   }
+
+	   public void setbGuardarDisabled(boolean bGuardarDisabled) {
+		      this.bGuardarDisabled = bGuardarDisabled;
+	   }
 	   
 	   @Override
 	   public boolean equals(Object obj) {
@@ -762,14 +1084,10 @@ public class CAplicacion {
 	   public int hashCode() {
 		      // TODO Auto-generated method stub
 		      return super.hashCode();
-	   }
+	   }	  
 
-	   public boolean isbGuardarDisabled() {
-		      return bGuardarDisabled;
-	   }
-
-	   public void setbGuardarDisabled(boolean bGuardarDisabled) {
-		      this.bGuardarDisabled = bGuardarDisabled;
+	   public void setLoginBean(CLogin loginBean) {
+		      this.loginBean = loginBean;
 	   }
 	  	
 }

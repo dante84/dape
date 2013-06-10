@@ -10,15 +10,13 @@
     <managed-bean>
         <managed-bean-name>cl</managed-bean-name>
         <managed-bean-class>test.CLogin</managed-bean-class>
-        <managed-bean-scope>request</managed-bean-scope>
+        <managed-bean-scope>session</managed-bean-scope>
     </managed-bean>
     
     <managed-bean>
         <managed-bean-name>ca</managed-bean-name>
         <managed-bean-class>test.CAplicacion</managed-bean-class>
         <managed-bean-scope>view</managed-bean-scope>
-    </managed-bean>
-    
-    <!-- Reglas de navegacion -->    
+    </managed-bean>            
     
 </faces-config>
